@@ -91,7 +91,9 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
   const db = getFirestore(app);
 
   let currentUser = null;
-  let GPLINKS_STATIC_URL = "";
+  
+  // 🔥 TUMHARA LINK YAHAN FIX KAR DIYA HAI 🔥
+  const GPLINKS_STATIC_URL = "https://gplinks.co/BFmfakvr";
 
   const statusBox = document.getElementById('statusBox');
   const generateBtn = document.getElementById('generateBtn');
@@ -103,34 +105,20 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       statusBox.innerText = msg;
   }
 
-  // 1. Fetch the Static URL saved from Admin Panel
-  onAuthStateChanged(auth, async (user) => {
+  // 1. Auth Check
+  onAuthStateChanged(auth, (user) => {
       if (!user) {
           window.location.href = "profile.html";
           return;
       }
       currentUser = user;
-      
-      try {
-          const apiSnap = await getDoc(doc(db, "settings", "api_keys"));
-          if(apiSnap.exists() && apiSnap.data().gplinks) {
-              // Ab yahan "API Key" ki jagah hum URL fetch kar rahe hain
-              GPLINKS_STATIC_URL = apiSnap.data().gplinks;
-          } else {
-              showStatus("System Error: Setup not complete. Ask Admin to add URL.", "error");
-              generateBtn.disabled = true;
-          }
-      } catch(e) {
-          showStatus("Database connection error.", "error");
-      }
-
-      checkVerificationReturn();
+      checkVerificationReturn(); // Check if user just returned from GPLinks
   });
 
-  // 2. Start Process (Flag in DB -> Redirect to Static GPLink)
+  // 2. Start Process (Database flag lagao aur bhej do)
   window.startUnlockProcess = async () => {
-      if(!currentUser || !GPLINKS_STATIC_URL) {
-          showStatus("System Error: URL not configured.", "error");
+      if(!currentUser) {
+          showStatus("Please login first.", "error");
           return;
       }
       
@@ -139,26 +127,26 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       showStatus("Redirecting to verification page...", "loading");
 
       try {
-          // Save a flag in user's database that they officially started the process
+          // Database mein mark kar do ki user process start kar chuka hai
           const userRef = doc(db, "users", currentUser.uid);
           await updateDoc(userRef, { pendingToken: "active" });
 
-          // Redirect to the manually created GPLink
+          // Seedha tumhare diye hue link par bhej do!
           window.location.href = GPLINKS_STATIC_URL;
           
       } catch (err) {
-          showStatus("Error starting process. Try again.", "error");
+          showStatus("Error starting process. Check your internet.", "error");
           generateBtn.disabled = false;
           genLoader.style.display = "none";
       }
   };
 
-  // 3. Return Verification (Check if user came back with success)
+  // 3. Return Verification Logic
   async function checkVerificationReturn() {
       const urlParams = new URLSearchParams(window.location.search);
       const isVerified = urlParams.get('verify');
       
-      // Agar user link solve karke return hua hai
+      // Agar URL mein ?verify=success likha hai
       if(isVerified === "success") {
           document.getElementById('stepGenerate').style.display = "none";
           document.getElementById('stepVerify').style.display = "block";
@@ -170,24 +158,24 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
               if(userSnap.exists()) {
                   const userData = userSnap.data();
                   
-                  // Check karega ki kya sach mein button daba ke gaya tha
+                  // Check karo ki database mein flag 'active' hai ya nahi (Bypass protection)
                   if(userData.pendingToken === "active") {
-                      // Grant 24 Hour Access (86400000 ms) and remove the flag
-                      const newExpiryTime = Date.now() + 86400000;
+                      // Pass activate karo (Agley 24 ghante ke liye)
+                      const newExpiryTime = Date.now() + 86400000; 
                       
                       await updateDoc(userRef, {
                           accessExpiresAt: newExpiryTime,
-                          pendingToken: deleteField() // Remove flag to prevent bypass
+                          pendingToken: deleteField() // Flag delete kar do
                       });
                       
                       document.getElementById('stepVerify').style.display = "none";
                       document.getElementById('mainIcon').innerText = "🎉";
                       showStatus("Premium Pass Unlocked Successfully!", "success");
                       
-                      // Wapas home bhej dega 2 second baad
+                      // 2 second baad Home page par bhej do
                       setTimeout(() => { window.location.href = "index.html"; }, 2000);
                   } else {
-                      // Agar user ne bina button dabaye direct URL khola
+                      // Agar flag nahi mila (matlab direct URL copy paste kiya hai kisi ne)
                       document.getElementById('stepVerify').style.display = "none";
                       document.getElementById('stepGenerate').style.display = "block";
                       showStatus("Verification failed. Please click 'Get Unlock Link' first.", "error");
@@ -196,7 +184,7 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
           } catch(err) {
               document.getElementById('stepVerify').style.display = "none";
               document.getElementById('stepGenerate').style.display = "block";
-              showStatus("Database error during verification.", "error");
+              showStatus("Database error. Please try again.", "error");
           }
       }
   }
