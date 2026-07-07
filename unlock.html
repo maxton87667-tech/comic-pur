@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Unlock Premium Pass | Comic Pur</title>
 
-<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYHWPM2BM4"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -127,13 +126,16 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       checkVerificationReturn();
   });
 
-  // 2. Generation Logic (Create Token -> Save to DB -> Shorten URL)
+  // 2. Generation Logic with CORS Proxy Fix
   window.startUnlockProcess = async () => {
-      if(!currentUser || !GPLINKS_API_KEY) return;
+      if(!currentUser || !GPLINKS_API_KEY) {
+          showStatus("System Error: Missing User or API Key.", "error");
+          return;
+      }
       
       generateBtn.disabled = true;
       genLoader.style.display = "block";
-      showStatus("Generating secure link...", "loading");
+      showStatus("Generating secure link... Please wait.", "loading");
 
       try {
           // Generate a highly secure random token
@@ -147,26 +149,31 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
           const currentUrl = window.location.origin + window.location.pathname;
           const targetUrl = `${currentUrl}?verify=${secretToken}`;
 
-          // Ask GPLinks to shorten this URL
-          const apiUrl = `https://gplinks.in/api?api=${GPLINKS_API_KEY}&url=${encodeURIComponent(targetUrl)}`;
+          // Using a CORS Proxy (AllOrigins) to bypass browser blocks
+          const apiUrl = `https://gplinks.in/api?api=${GPLINKS_API_KEY}&url=${encodeURIComponent(targetUrl)}&format=json`;
+          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`;
           
-          const response = await fetch(apiUrl);
-          const data = await response.json();
+          const response = await fetch(proxyUrl);
+          const proxyData = await response.json();
+          
+          // Parse the actual content returned by GPLinks
+          const data = JSON.parse(proxyData.contents);
 
-          if(data.status === "success") {
+          if(data.status === "success" || data.shortenedUrl) {
               showStatus("Redirecting to verification page...", "loading");
               window.location.href = data.shortenedUrl;
           } else {
-              throw new Error("GPLinks API rejected the request.");
+              throw new Error(data.message || "GPLinks API rejected the request.");
           }
       } catch (err) {
-          showStatus("Error generating link. Please try again later.", "error");
+          console.error(err);
+          showStatus("Error generating link. Please check API Key or Internet.", "error");
           generateBtn.disabled = false;
           genLoader.style.display = "none";
       }
   };
 
-  // 3. Return Verification Logic (The Zero-Bypass Masterstroke)
+  // 3. Return Verification Logic (Zero-Bypass)
   async function checkVerificationReturn() {
       const urlParams = new URLSearchParams(window.location.search);
       const returnedToken = urlParams.get('verify');
@@ -182,24 +189,21 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
               if(userSnap.exists()) {
                   const userData = userSnap.data();
                   
-                  // Verification Check
                   if(userData.pendingToken === returnedToken) {
                       // Match Found! Grant 24 Hour Access (86400000 ms) and delete token
                       const newExpiryTime = Date.now() + 86400000;
                       
                       await updateDoc(userRef, {
                           accessExpiresAt: newExpiryTime,
-                          pendingToken: deleteField() // Destroy token so it can't be reused
+                          pendingToken: deleteField() 
                       });
                       
                       document.getElementById('stepVerify').style.display = "none";
                       document.getElementById('mainIcon').innerText = "🎉";
                       showStatus("Premium Pass Unlocked Successfully!", "success");
                       
-                      // Auto redirect to homepage after 2 seconds
                       setTimeout(() => { window.location.href = "index.html"; }, 2000);
                   } else {
-                      // Fake or Expired Token
                       document.getElementById('stepVerify').style.display = "none";
                       document.getElementById('stepGenerate').style.display = "block";
                       showStatus("Verification failed. The link is invalid or already used.", "error");
