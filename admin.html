@@ -28,6 +28,10 @@
   .form-control { width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: white; font-size: 14px; outline: none; transition: 0.3s; }
   .form-control:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(0,212,255,0.2); }
   
+  .checkbox-group { display: flex; align-items: center; gap: 10px; background: rgba(239, 68, 68, 0.1); padding: 12px 15px; border-radius: 8px; border: 1px dashed var(--danger); margin-bottom: 18px; }
+  .checkbox-group input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--danger); }
+  .checkbox-group label { margin: 0; color: white; cursor: pointer; font-size: 14px; }
+  
   .preview-box { display: flex; gap: 15px; margin-top: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.1); align-items: center; }
   .thumb-img { width: 70px; aspect-ratio: 2/3; object-fit: cover; border-radius: 6px; border: 1px solid var(--primary); background: #222; }
 
@@ -50,8 +54,10 @@
   .comic-list { display: flex; flex-direction: column; gap: 10px; }
   .comic-item { background: rgba(255,255,255,0.02); padding: 12px 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05); }
   .comic-info-layout { display: flex; align-items: center; gap: 15px; }
-  .comic-item strong { color: white; font-size: 15px; }
+  .comic-item strong { color: white; font-size: 15px; display: flex; align-items: center; gap: 8px; }
   .comic-item p { color: #aaa; font-size: 12px; margin-top: 2px; }
+
+  .tag-mini { background: var(--danger); color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px; font-weight: bold; }
 
   .action-btns button { padding: 7px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; margin-left: 6px; transition: 0.2s; color: white; }
   .btn-sync { background: #2563eb; }
@@ -90,10 +96,18 @@
           <button class="btn btn-primary" id="saveGhTokenBtn" style="margin-top: 12px;">Save GitHub Token</button>
           <button class="btn btn-warning" id="testGhConnectionBtn">📡 Test GitHub Connection</button>
         </div>
+
+        <div class="form-group" style="flex: 1; min-width: 300px;">
+          <label>GPLinks API Key</label>
+          <input type="password" id="gpLinksTokenField" class="form-control" placeholder="Paste your GPLinks API Key here...">
+          <button class="btn btn-success" id="saveGpTokenBtn" style="margin-top: 12px;">Save API Key to Database</button>
+          <div id="apiKeyStatus" class="status-box"></div>
+        </div>
+    </div>
   </div>
   
   <div class="panel">
-    <h3 id="panelTitle">1. Add New Comic</h3>
+    <h3 id="panelTitle">1. Add / Edit Comic</h3>
     <input type="hidden" id="editComicId">
     
     <div class="form-group">
@@ -108,6 +122,12 @@
       <label>Genre</label>
       <input type="text" id="comicGenre" class="form-control" placeholder="Example: Romance, Action">
     </div>
+    
+    <div class="checkbox-group">
+      <input type="checkbox" id="comicIsAdult">
+      <label for="comicIsAdult">Mark as 18+ (Shows Warning Popup & Adult Tag)</label>
+    </div>
+
     <div class="form-group">
       <label>Story Summary / Synopsis</label>
       <textarea id="comicSummary" class="form-control" placeholder="Write full comic description here..." rows="4"></textarea>
@@ -199,11 +219,9 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // =================================================================
   const GITHUB_USER = "maxton87667-tech"; 
   const GITHUB_REPO = "Comics";           
   const GITHUB_BRANCH = "main";           
-  // =================================================================
 
   const CLOUD_NAME = "dht22h84x";
   const UPLOAD_PRESET = "comics_preset";
@@ -222,33 +240,25 @@
       } else { alert("Please enter a valid GitHub token."); }
   });
 
-  // TEST GITHUB CONNECTION (NEW FEATURE)
   document.getElementById('testGhConnectionBtn').addEventListener('click', async () => {
       const statusBox = document.getElementById('globalSyncStatus');
-      if(!GITHUB_TOKEN) {
-          alert("Pehle GitHub token box mein daal kar 'Save GitHub Token' dabao."); return;
-      }
-      
-      statusBox.style.display = "block"; 
-      statusBox.style.borderLeftColor = "var(--primary)";
+      if(!GITHUB_TOKEN) { alert("Pehle GitHub token box mein daal kar 'Save GitHub Token' dabao."); return; }
+      statusBox.style.display = "block"; statusBox.style.borderLeftColor = "var(--primary)";
       statusBox.innerText = "Testing connection to GitHub...";
-      
       try {
           const testUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}?ref=${GITHUB_BRANCH}`;
           const res = await fetch(testUrl, { headers: { "Authorization": `Bearer ${GITHUB_TOKEN}` } });
-          
           if(res.ok) {
               const data = await res.json();
               statusBox.style.borderLeftColor = "var(--success)";
-              statusBox.innerText = `Success! Connected to Repo: ${data.name}. Token is working perfectly.`;
+              statusBox.innerText = `Success! Connected to Repo: ${data.name}.`;
           } else {
-              if(res.status === 404) throw new Error(`Repo not found. Check if GITHUB_USER and GITHUB_REPO are correct in code.`);
-              if(res.status === 401) throw new Error(`Unauthorized. Your Token is expired or invalid.`);
+              if(res.status === 404) throw new Error(`Repo not found.`);
+              if(res.status === 401) throw new Error(`Unauthorized Token.`);
               throw new Error(`API Error: ${res.statusText}`);
           }
       } catch (e) {
-          statusBox.style.borderLeftColor = "var(--danger)";
-          statusBox.innerText = "Connection Failed: " + e.message;
+          statusBox.style.borderLeftColor = "var(--danger)"; statusBox.innerText = "Connection Failed: " + e.message;
       }
   });
 
@@ -271,8 +281,7 @@
               statusBox.innerText = "GPLinks API Key saved to database successfully!";
               statusBox.style.borderLeftColor = "var(--success)";
           } catch(e) {
-              statusBox.innerText = "Database Error: " + e.message;
-              statusBox.style.borderLeftColor = "var(--danger)";
+              statusBox.innerText = "Database Error: " + e.message; statusBox.style.borderLeftColor = "var(--danger)";
           }
       }
   });
@@ -351,7 +360,6 @@
       }
   };
 
-  // ADVANCED GITHUB SYNC (Fixed Auth Header & Added Deep Logs)
   window.syncWithGithubRepo = async (comicId) => {
       const statusBox = document.getElementById('globalSyncStatus');
       const comic = allComicsData.find(c => c.id === comicId);
@@ -359,40 +367,31 @@
 
       if(!GITHUB_TOKEN) {
           statusBox.style.display = "block"; statusBox.style.borderLeftColor = "var(--danger)";
-          statusBox.innerText = "Error: GitHub Token is missing. Save token above.";
-          window.scrollTo({top: 0, behavior: 'smooth'}); return;
+          statusBox.innerText = "Error: GitHub Token is missing."; window.scrollTo({top: 0, behavior: 'smooth'}); return;
       }
 
       const folderName = comic.githubFolder || comic.title.toLowerCase().trim().replace(/\s+/g, '-');
       statusBox.style.display = "block"; statusBox.style.borderLeftColor = "var(--primary)";
-      statusBox.innerHTML = `Connecting to GitHub [Branch: <b>${GITHUB_BRANCH}</b>]...`;
-      window.scrollTo({top: 0, behavior: 'smooth'});
+      statusBox.innerHTML = `Connecting to GitHub [Branch: <b>${GITHUB_BRANCH}</b>]...`; window.scrollTo({top: 0, behavior: 'smooth'});
 
       try {
-          // Change `token` to `Bearer` (Fixes issues with fine-grained tokens)
           const repoUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/comics/${encodeURIComponent(folderName)}?ref=${GITHUB_BRANCH}`;
           const response = await fetch(repoUrl, { headers: { "Authorization": `Bearer ${GITHUB_TOKEN}` } });
           
           if(!response.ok) {
-              if(response.status === 404) {
-                  throw new Error(`404 NOT FOUND: Yeh folder nahi mila -> comics/${folderName}. Ensure folder exists and is not empty.`);
-              } else if(response.status === 401) {
-                  throw new Error(`401 UNAUTHORIZED: Token expire ho gaya hai ya permissions (repo scope) missing hai.`);
-              } else {
-                  throw new Error(`API Error ${response.status}: ${response.statusText}`);
-              }
+              if(response.status === 404) throw new Error(`Folder NOT FOUND -> comics/${folderName}`);
+              else if(response.status === 401) throw new Error(`UNAUTHORIZED: Token invalid/expired.`);
+              else throw new Error(`API Error ${response.status}: ${response.statusText}`);
           }
           
           const items = await response.json();
           let ghChapters = items.filter(item => item.type === "dir");
           if(ghChapters.length === 0) {
-              statusBox.style.borderLeftColor = "var(--warning)";
-              statusBox.innerText = `Connected! Lekin 'comics/${folderName}' ke andar koi Chapter folder (jaise Ch1) nahi mila.`; return;
+              statusBox.style.borderLeftColor = "var(--warning)"; statusBox.innerText = `No Chapter folders found inside 'comics/${folderName}'.`; return;
           }
 
           ghChapters.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
-          let existingEps = comic.episodes || [];
-          let newEpisodesAdded = 0;
+          let existingEps = comic.episodes || []; let newEpisodesAdded = 0;
           statusBox.innerText = `Found ${ghChapters.length} chapters. Syncing images...`;
 
           for (let ghCh of ghChapters) {
@@ -419,8 +418,7 @@
               statusBox.style.borderLeftColor = "var(--warning)"; statusBox.innerText = `Database is already up to date with GitHub!`;
           }
       } catch (err) {
-          statusBox.style.borderLeftColor = "var(--danger)";
-          statusBox.innerText = `Sync Error: ${err.message}`;
+          statusBox.style.borderLeftColor = "var(--danger)"; statusBox.innerText = `Sync Error: ${err.message}`;
       }
   };
 
@@ -431,10 +429,14 @@
       const genre = document.getElementById('comicGenre').value.trim();
       const summary = document.getElementById('comicSummary').value.trim();
       const coverUrl = document.getElementById('comicCover').value.trim();
+      
+      // 🔥 GET 18+ CHECKBOX VALUE 🔥
+      const isAdult = document.getElementById('comicIsAdult').checked;
+
       const statusBox = document.getElementById('saveStatus');
 
       if(!title) { alert("Comic title is mandatory!"); return; }
-      const comicData = { title, githubFolder, genre, summary, coverUrl, updatedAt: serverTimestamp() };
+      const comicData = { title, githubFolder, genre, summary, coverUrl, isAdult, updatedAt: serverTimestamp() };
 
       try {
           statusBox.style.display = "block"; statusBox.innerText = "Saving data...";
@@ -515,13 +517,15 @@
 
           allComicsData.forEach(c => {
               let epCount = c.episodes ? c.episodes.length : 0;
+              let adultBadge = c.isAdult ? `<span class="tag-mini">18+</span>` : "";
+              
               select.innerHTML += `<option value="${c.id}" ${c.id === activeSelectorId ? 'selected':''}>${c.title} (${epCount} Chapters)</option>`;
               list.innerHTML += `
               <div class="comic-item">
                  <div class="comic-info-layout">
                     <img src="${c.coverUrl || 'https://via.placeholder.com/70x105?text=No+Cover'}" style="width:50px; aspect-ratio:2/3; object-fit:cover; border-radius:4px; border:1px solid rgba(255,255,255,0.1);">
                     <div>
-                       <strong>${c.title}</strong><p>Genre: ${c.genre || 'N/A'} | Chapters: ${epCount}</p>
+                       <strong>${c.title} ${adultBadge}</strong><p>Genre: ${c.genre || 'N/A'} | Chapters: ${epCount}</p>
                     </div>
                  </div>
                  <div class="action-btns">
@@ -546,9 +550,16 @@
 
   window.editComic = (id) => {
       const c = allComicsData.find(x => x.id === id); if(!c) return;
-      document.getElementById('editComicId').value = c.id; document.getElementById('comicTitle').value = c.title || "";
-      document.getElementById('githubFolder').value = c.githubFolder || ""; document.getElementById('comicGenre').value = c.genre || "";
-      document.getElementById('comicSummary').value = c.summary || ""; document.getElementById('comicCover').value = c.coverUrl || "";
+      document.getElementById('editComicId').value = c.id; 
+      document.getElementById('comicTitle').value = c.title || "";
+      document.getElementById('githubFolder').value = c.githubFolder || ""; 
+      document.getElementById('comicGenre').value = c.genre || "";
+      document.getElementById('comicSummary').value = c.summary || ""; 
+      document.getElementById('comicCover').value = c.coverUrl || "";
+      
+      // 🔥 SET CHECKBOX STATE WHEN EDITING 🔥
+      document.getElementById('comicIsAdult').checked = c.isAdult === true;
+      
       document.getElementById('formCoverPreview').src = c.coverUrl ? c.coverUrl : "https://via.placeholder.com/70x105?text=No+Cover";
       document.getElementById('panelTitle').innerText = "Edit Comic"; document.getElementById('saveComicBtn').innerText = "Update Comic Data";
       window.scrollTo({top: 0, behavior: 'smooth'});
@@ -564,8 +575,12 @@
       document.getElementById('editComicId').value = ""; document.getElementById('comicTitle').value = "";
       document.getElementById('githubFolder').value = ""; document.getElementById('comicGenre').value = "";
       document.getElementById('comicSummary').value = ""; document.getElementById('comicCover').value = "";
+      
+      // 🔥 RESET CHECKBOX 🔥
+      document.getElementById('comicIsAdult').checked = false;
+      
       document.getElementById('formCoverPreview').src = "https://via.placeholder.com/70x105?text=No+Cover";
-      document.getElementById('panelTitle').innerText = "1. Add New Comic"; document.getElementById('saveComicBtn').innerText = "Save Comic Data";
+      document.getElementById('panelTitle').innerText = "1. Add / Edit Comic"; document.getElementById('saveComicBtn').innerText = "Save Comic Data";
       document.getElementById('saveStatus').style.display = "none";
   };
 </script>
