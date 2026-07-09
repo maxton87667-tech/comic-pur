@@ -43,18 +43,17 @@
   .container { max-width: 1200px; width: 100%; margin: 0 auto; padding: 20px; flex-grow: 1; }
   .results-title { font-size: 16px; font-weight: 600; color: var(--text-muted); margin-bottom: 20px; }
 
-  /* COMIC GRID SYSTEM (PHONE KE LIYE 2X GRID) */
+  /* COMIC GRID SYSTEM (PHONE PAR 2X GRID) */
   .comic-grid { 
     display: grid; 
     grid-template-columns: repeat(2, 1fr); 
     gap: 12px; 
   }
-  
   @media(min-width: 600px) { .comic-grid { grid-template-columns: repeat(3, 1fr); gap: 15px; } }
   @media(min-width: 900px) { .comic-grid { grid-template-columns: repeat(4, 1fr); gap: 20px; } }
   @media(min-width: 1100px) { .comic-grid { grid-template-columns: repeat(5, 1fr); } }
 
-  /* COMIC CARD (Same as index.html) */
+  /* COMIC CARD */
   .comic-card { 
     background: var(--card-bg); border-radius: 10px; overflow: hidden; 
     border: 1px solid rgba(255,255,255,0.05); transition: transform 0.2s, border-color 0.2s;
@@ -65,7 +64,7 @@
   .cover-wrapper { width: 100%; aspect-ratio: 2/3; position: relative; background: #1f2937; }
   .cover-img { width: 100%; height: 100%; object-fit: cover; }
   
-  /* 🔥 ADMIN OPERATED 18+ TAG STYLE 🔥 */
+  /* 🔥 18+ TAG STYLE 🔥 */
   .tag-18 { 
     position: absolute; top: 8px; left: 8px; 
     background: var(--danger); color: white; 
@@ -126,7 +125,7 @@
   const searchInput = document.getElementById('searchInput');
   const resultsTitle = document.getElementById('resultsTitle');
 
-  // 1. Database se saari comics ek baar mein fetch kar lo
+  // Load all comics once for instant filtering
   async function fetchAllComics() {
       try {
           const snapshot = await getDocs(collection(db, "comics"));
@@ -143,7 +142,6 @@
           // Sort recently updated first
           allComicsData.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
           
-          // Initial Render
           renderComics(allComicsData);
           
       } catch (err) {
@@ -152,7 +150,7 @@
       }
   }
 
-  // 2. Grid mein comics render karne ka function
+  // Render function
   function renderComics(comicsArray) {
       container.innerHTML = "";
       
@@ -165,10 +163,7 @@
           const epCount = c.episodes ? c.episodes.length : 0;
           
           // 🔥 18+ TAG LOGIC 🔥
-          let adultTag = "";
-          if(c.isAdult === true) {
-              adultTag = `<span class="tag-18">18+</span>`;
-          }
+          let adultTag = c.isAdult ? `<span class="tag-18">18+</span>` : "";
           
           container.innerHTML += `
             <a href="comic.html?id=${c.id}" class="comic-card">
@@ -188,7 +183,7 @@
       });
   }
 
-  // 3. Live Search Functionality
+  // Live Search Input Listener
   searchInput.addEventListener('input', (e) => {
       const searchTerm = e.target.value.toLowerCase().trim();
       
@@ -210,7 +205,7 @@
       renderComics(filteredComics);
   });
 
-  // Start fetching on load
+  // Init
   fetchAllComics();
 </script>
 </body>
