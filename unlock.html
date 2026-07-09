@@ -13,7 +13,8 @@ body { background-color: var(--dark); color: white; min-height: 100vh; display: 
 header { padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; background: rgba(7, 11, 25, 0.95); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
 .brand-text { font-size: 20px; font-weight: 900; color: white; text-decoration: none; letter-spacing: 1px;}
 .brand-text span { color: var(--primary); }
-.back-btn { background: transparent; color: var(--primary); border: 1px solid var(--primary); padding: 6px 15px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; }
+.back-btn { background: transparent; color: var(--primary); border: 1px solid var(--primary); padding: 6px 15px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
+.back-btn:hover { background: var(--primary); color: #000; }
 
 /* UNLOCK CARD */
 .main-content { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
@@ -27,10 +28,10 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
 .action-btn:hover { background: #00b8e6; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0,212,255,0.5); }
 .action-btn:disabled { background: #333; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
 
-.status-msg { margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 14px; display: none; }
+.status-msg { margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 14px; display: none; word-wrap: break-word; }
 .status-success { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); }
 .status-error { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
-.status-loading { color: var(--primary); }
+.status-loading { color: var(--primary); border: 1px solid var(--primary); background: rgba(0, 212, 255, 0.1); }
 
 .loader { border: 3px solid rgba(0,0,0,0.1); border-top: 3px solid #000; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -49,7 +50,7 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
     <div class="unlock-title">24-HOUR <span>PREMIUM PASS</span></div>
     
     <div id="stepGenerate">
-      <p class="unlock-desc">Complete a quick verification step (Ads) to unlock the entire comic library for the next 24 hours.</p>
+      <p class="unlock-desc">Watch a quick ad to unlock the entire comic library for the next 24 hours. No hidden fees!</p>
       <button class="action-btn" id="generateBtn" onclick="startUnlockProcess()">
         <span>Get Unlock Link</span>
         <div class="loader" id="genLoader"></div>
@@ -57,8 +58,8 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
     </div>
 
     <div id="stepVerify" style="display: none;">
-      <p class="unlock-desc">Verifying your session...</p>
-      <div class="loader" style="display: inline-block; border-top-color: var(--primary);"></div>
+      <p class="unlock-desc" style="color: var(--primary); font-weight: bold;">Verifying your secure session...</p>
+      <div class="loader" style="display: inline-block; border-top-color: var(--primary); border-left-color: rgba(255,255,255,0.1); border-right-color: rgba(255,255,255,0.1); border-bottom-color: rgba(255,255,255,0.1);"></div>
     </div>
 
     <div id="statusBox" class="status-msg"></div>
@@ -82,11 +83,6 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
   const db = getFirestore(app);
 
   let currentUser = null;
-  
-  // 🔥 TUMHARA STATIC GPLINK YAHAN DAALO 🔥
-  // Isey GPLinks dashboard se banakar yahan paste karna
-  const GPLINKS_STATIC_URL = "https://gplinks.co/YOUR_SHORT_LINK_HERE";
-
   const statusBox = document.getElementById('statusBox');
   const generateBtn = document.getElementById('generateBtn');
   const genLoader = document.getElementById('genLoader');
@@ -97,100 +93,94 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       statusBox.innerText = msg;
   }
 
-  // 1. Auth Check
+  // 1. Authentication Check
   onAuthStateChanged(auth, (user) => {
       if (!user) {
           window.location.href = "profile.html";
           return;
       }
       currentUser = user;
-      checkVerificationReturn(); 
+      
+      // Agar user GPLinks se redirect hokar aaya hai
+      const urlParams = new URLSearchParams(window.location.search);
+      if(urlParams.has('verify')) {
+          checkVerificationReturn(urlParams.get('verify'));
+      }
   });
 
-  // 2. Start Process (Time-Lock ke sath)
+  // 2. Start Secure Unlock Process
   window.startUnlockProcess = async () => {
       if(!currentUser) {
-          showStatus("Please login first.", "error");
+          showStatus("Please login first to get the pass.", "error");
           return;
       }
       
       generateBtn.disabled = true;
       genLoader.style.display = "block";
-      showStatus("Redirecting to verification page...", "loading");
+      showStatus("Connecting to secure server...", "loading");
 
       try {
+          // 1. Ek dum naya aur unique token banao
+          const randomToken = "tok_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+          
+          // 2. Database mein save karo taaki wapas aane par match ho sake
           const userRef = doc(db, "users", currentUser.uid);
-          await updateDoc(userRef, { 
-              pendingToken: "active",
-              clickTime: Date.now() // Timestamp for Anti-Bypass
-          });
+          await updateDoc(userRef, { pendingToken: randomToken });
 
-          // Redirect to Static GPLink
-          window.location.href = GPLINKS_STATIC_URL;
+          // 3. User ko seedha Cloudflare Redirector par bhejo! (Bypasses Ad-Blockers)
+          // Yeh URL background fetch nahi karega, seedha page redirect hoga
+          const workerUrl = `https://comic-pur.maxton480.workers.dev/generate?token=${randomToken}`;
+          window.location.href = workerUrl;
           
       } catch (err) {
-          showStatus("Error starting process. Check your internet.", "error");
+          console.error(err);
+          showStatus("Network Error: Could not save security token.", "error");
           generateBtn.disabled = false;
           genLoader.style.display = "none";
       }
   };
 
-  // 3. Return Verification Logic (Anti-Bypass System)
-  async function checkVerificationReturn() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isVerified = urlParams.get('verify');
+  // 3. Verify GPLinks Return (100% Hacker-Proof)
+  async function checkVerificationReturn(returnedToken) {
+      document.getElementById('stepGenerate').style.display = "none";
+      document.getElementById('stepVerify').style.display = "block";
       
-      if(isVerified === "success") {
-          document.getElementById('stepGenerate').style.display = "none";
-          document.getElementById('stepVerify').style.display = "block";
+      try {
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
           
-          try {
-              const userRef = doc(db, "users", currentUser.uid);
-              const userSnap = await getDoc(userRef);
+          if(userSnap.exists()) {
+              const userData = userSnap.data();
               
-              if(userSnap.exists()) {
-                  const userData = userSnap.data();
+              // TIGHT SECURITY: Jo token banaya tha, wahi token wapas aana chahiye!
+              if(userData.pendingToken && userData.pendingToken === returnedToken) {
+                  const newExpiryTime = Date.now() + 86400000; // 24 Hours validity
                   
-                  if(userData.pendingToken === "active") {
-                      
-                      const timeSpent = Date.now() - (userData.clickTime || 0);
-                      
-                      // ANTI-BYPASS: Must wait at least 15 seconds (15000ms)
-                      if (timeSpent < 15000) {
-                          document.getElementById('stepVerify').style.display = "none";
-                          document.getElementById('stepGenerate').style.display = "block";
-                          
-                          await updateDoc(userRef, { pendingToken: deleteField(), clickTime: deleteField() });
-                          
-                          showStatus("Bhai itni jaldi ads skip nahi hote! Cheat mat karo.", "error");
-                          return; 
-                      }
-
-                      // Grant Access
-                      const newExpiryTime = Date.now() + 86400000; 
-                      
-                      await updateDoc(userRef, {
-                          accessExpiresAt: newExpiryTime,
-                          pendingToken: deleteField(),
-                          clickTime: deleteField()
-                      });
-                      
-                      document.getElementById('stepVerify').style.display = "none";
-                      document.getElementById('mainIcon').innerText = "🎉";
-                      showStatus("Premium Pass Unlocked Successfully!", "success");
-                      
-                      setTimeout(() => { window.location.href = "index.html"; }, 2000);
-                  } else {
-                      document.getElementById('stepVerify').style.display = "none";
-                      document.getElementById('stepGenerate').style.display = "block";
-                      showStatus("Verification failed. Please click 'Get Unlock Link' first.", "error");
-                  }
+                  // SUCCESS: Pass activate karo aur Token hamesha ke liye mita do
+                  await updateDoc(userRef, {
+                      accessExpiresAt: newExpiryTime,
+                      pendingToken: deleteField() 
+                  });
+                  
+                  document.getElementById('stepVerify').style.display = "none";
+                  document.getElementById('mainIcon').innerText = "🎉";
+                  showStatus("Premium Pass Unlocked Successfully!", "success");
+                  
+                  setTimeout(() => { window.location.href = "index.html"; }, 2000);
+              } else {
+                  // FAILED: Hacker attempt or old link used
+                  document.getElementById('stepVerify').style.display = "none";
+                  document.getElementById('stepGenerate').style.display = "block";
+                  showStatus("Security Error: Invalid or expired token. You cannot bypass the system!", "error");
+                  
+                  // Token delete karo taaki stuck na ho
+                  await updateDoc(userRef, { pendingToken: deleteField() });
               }
-          } catch(err) {
-              document.getElementById('stepVerify').style.display = "none";
-              document.getElementById('stepGenerate').style.display = "block";
-              showStatus("Database error. Please try again.", "error");
           }
+      } catch(err) {
+          document.getElementById('stepVerify').style.display = "none";
+          document.getElementById('stepGenerate').style.display = "block";
+          showStatus("Database verification error. Please try again.", "error");
       }
   }
 </script>
