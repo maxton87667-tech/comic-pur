@@ -4,15 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Unlock Premium Pass | Comic Pur</title>
-
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-PYHWPM2BM4"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-PYHWPM2BM4');
-</script>
-
 <style>
 :root { --primary: #00d4ff; --dark: #070b19; --card-bg: #111827; --success: #10b981; --danger: #ef4444; }
 * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
@@ -22,8 +13,7 @@ body { background-color: var(--dark); color: white; min-height: 100vh; display: 
 header { padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; background: rgba(7, 11, 25, 0.95); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
 .brand-text { font-size: 20px; font-weight: 900; color: white; text-decoration: none; letter-spacing: 1px;}
 .brand-text span { color: var(--primary); }
-.back-btn { background: transparent; color: var(--primary); border: 1px solid var(--primary); padding: 6px 15px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; transition: 0.2s; }
-.back-btn:hover { background: var(--primary); color: #000; }
+.back-btn { background: transparent; color: var(--primary); border: 1px solid var(--primary); padding: 6px 15px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; }
 
 /* UNLOCK CARD */
 .main-content { flex-grow: 1; display: flex; justify-content: center; align-items: center; padding: 20px; }
@@ -37,10 +27,10 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
 .action-btn:hover { background: #00b8e6; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0,212,255,0.5); }
 .action-btn:disabled { background: #333; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
 
-.status-msg { margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 14px; display: none; word-wrap: break-word; }
+.status-msg { margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 14px; display: none; }
 .status-success { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); }
 .status-error { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
-.status-loading { color: var(--primary); border: 1px solid var(--primary); background: rgba(0, 212, 255, 0.1); }
+.status-loading { color: var(--primary); }
 
 .loader { border: 3px solid rgba(0,0,0,0.1); border-top: 3px solid #000; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -59,7 +49,7 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
     <div class="unlock-title">24-HOUR <span>PREMIUM PASS</span></div>
     
     <div id="stepGenerate">
-      <p class="unlock-desc">Complete a quick verification step to unlock the entire comic library for the next 24 hours. No hidden fees!</p>
+      <p class="unlock-desc">Complete a quick verification step (Ads) to unlock the entire comic library for the next 24 hours.</p>
       <button class="action-btn" id="generateBtn" onclick="startUnlockProcess()">
         <span>Get Unlock Link</span>
         <div class="loader" id="genLoader"></div>
@@ -67,8 +57,8 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
     </div>
 
     <div id="stepVerify" style="display: none;">
-      <p class="unlock-desc" style="color: var(--primary); font-weight: bold;">Verifying your secure session...</p>
-      <div class="loader" style="display: inline-block; border-top-color: var(--primary); border-left-color: rgba(255,255,255,0.1); border-right-color: rgba(255,255,255,0.1); border-bottom-color: rgba(255,255,255,0.1);"></div>
+      <p class="unlock-desc">Verifying your session...</p>
+      <div class="loader" style="display: inline-block; border-top-color: var(--primary);"></div>
     </div>
 
     <div id="statusBox" class="status-msg"></div>
@@ -92,6 +82,11 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
   const db = getFirestore(app);
 
   let currentUser = null;
+  
+  // 🔥 TUMHARA STATIC GPLINK YAHAN DAALO 🔥
+  // Isey GPLinks dashboard se banakar yahan paste karna
+  const GPLINKS_STATIC_URL = "https://gplinks.co/YOUR_SHORT_LINK_HERE";
+
   const statusBox = document.getElementById('statusBox');
   const generateBtn = document.getElementById('generateBtn');
   const genLoader = document.getElementById('genLoader');
@@ -102,114 +97,100 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       statusBox.innerText = msg;
   }
 
-  // 1. Check Authentication on Page Load
+  // 1. Auth Check
   onAuthStateChanged(auth, (user) => {
       if (!user) {
           window.location.href = "profile.html";
           return;
       }
       currentUser = user;
-      
-      // Check if user is returning from GPLinks
-      const urlParams = new URLSearchParams(window.location.search);
-      if(urlParams.has('verify')) {
-          checkVerificationReturn(urlParams.get('verify'));
-      }
+      checkVerificationReturn(); 
   });
 
-  // 2. Start Secure Unlock Process
+  // 2. Start Process (Time-Lock ke sath)
   window.startUnlockProcess = async () => {
       if(!currentUser) {
-          showStatus("Please login first to generate a link.", "error");
+          showStatus("Please login first.", "error");
           return;
       }
       
       generateBtn.disabled = true;
       genLoader.style.display = "block";
-      showStatus("Generating dynamic secure link... Please wait.", "loading");
+      showStatus("Redirecting to verification page...", "loading");
 
       try {
-          // A. Generate Unique Random Token (Anti-Bypass)
-          const randomToken = "tok_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-          
-          // B. Save this token to User's database securely
           const userRef = doc(db, "users", currentUser.uid);
-          await updateDoc(userRef, { pendingToken: randomToken });
+          await updateDoc(userRef, { 
+              pendingToken: "active",
+              clickTime: Date.now() // Timestamp for Anti-Bypass
+          });
 
-          // C. Build exact Return URL dynamically (Works everywhere)
-          const currentPath = window.location.origin + window.location.pathname; 
-          const destinationUrl = `${currentPath}?verify=${randomToken}`;
-
-          // D. Call your Cloudflare Worker to fetch Short Link
-          const workerProxyUrl = `https://comic-pur.maxton480.workers.dev/api/shorten?url=${encodeURIComponent(destinationUrl)}`;
-          
-          const response = await fetch(workerProxyUrl);
-          
-          if (!response.ok) {
-              throw new Error("Server communication failed.");
-          }
-
-          const data = await response.json();
-
-          if(data.status === "success" && data.shortenedUrl) {
-              showStatus("Redirecting to verification page...", "loading");
-              // Send user to GPLinks
-              window.location.href = data.shortenedUrl;
-          } else {
-              throw new Error("Link Shortener API rejected the request.");
-          }
+          // Redirect to Static GPLink
+          window.location.href = GPLINKS_STATIC_URL;
           
       } catch (err) {
-          console.error(err);
-          showStatus(`Error: ${err.message}. Please try again.`, "error");
+          showStatus("Error starting process. Check your internet.", "error");
           generateBtn.disabled = false;
           genLoader.style.display = "none";
       }
   };
 
-  // 3. Verify Return & Activate Pass
-  async function checkVerificationReturn(returnedToken) {
-      document.getElementById('stepGenerate').style.display = "none";
-      document.getElementById('stepVerify').style.display = "block";
+  // 3. Return Verification Logic (Anti-Bypass System)
+  async function checkVerificationReturn() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isVerified = urlParams.get('verify');
       
-      try {
-          const userRef = doc(db, "users", currentUser.uid);
-          const userSnap = await getDoc(userRef);
+      if(isVerified === "success") {
+          document.getElementById('stepGenerate').style.display = "none";
+          document.getElementById('stepVerify').style.display = "block";
           
-          if(userSnap.exists()) {
-              const userData = userSnap.data();
+          try {
+              const userRef = doc(db, "users", currentUser.uid);
+              const userSnap = await getDoc(userRef);
               
-              // STRICT MATCH: Does the token from URL match the token in Database?
-              if(userData.pendingToken && userData.pendingToken === returnedToken) {
-                  // 24 Hours in milliseconds
-                  const newExpiryTime = Date.now() + 86400000; 
+              if(userSnap.exists()) {
+                  const userData = userSnap.data();
                   
-                  // ACTIVATE PASS & DESTROY TOKEN (So it can never be reused)
-                  await updateDoc(userRef, {
-                      accessExpiresAt: newExpiryTime,
-                      pendingToken: deleteField() 
-                  });
-                  
-                  document.getElementById('stepVerify').style.display = "none";
-                  document.getElementById('mainIcon').innerText = "🎉";
-                  showStatus("Premium Pass Unlocked Successfully!", "success");
-                  
-                  // Redirect to Home after 2 seconds
-                  setTimeout(() => { window.location.href = "index.html"; }, 2000);
-              } else {
-                  // Security Failed (Hacker attempt or expired link)
-                  document.getElementById('stepVerify').style.display = "none";
-                  document.getElementById('stepGenerate').style.display = "block";
-                  showStatus("Security Error: Invalid or expired verification token. Please generate a new link.", "error");
-                  
-                  // Cleanup any stuck tokens
-                  await updateDoc(userRef, { pendingToken: deleteField() });
+                  if(userData.pendingToken === "active") {
+                      
+                      const timeSpent = Date.now() - (userData.clickTime || 0);
+                      
+                      // ANTI-BYPASS: Must wait at least 15 seconds (15000ms)
+                      if (timeSpent < 15000) {
+                          document.getElementById('stepVerify').style.display = "none";
+                          document.getElementById('stepGenerate').style.display = "block";
+                          
+                          await updateDoc(userRef, { pendingToken: deleteField(), clickTime: deleteField() });
+                          
+                          showStatus("Bhai itni jaldi ads skip nahi hote! Cheat mat karo.", "error");
+                          return; 
+                      }
+
+                      // Grant Access
+                      const newExpiryTime = Date.now() + 86400000; 
+                      
+                      await updateDoc(userRef, {
+                          accessExpiresAt: newExpiryTime,
+                          pendingToken: deleteField(),
+                          clickTime: deleteField()
+                      });
+                      
+                      document.getElementById('stepVerify').style.display = "none";
+                      document.getElementById('mainIcon').innerText = "🎉";
+                      showStatus("Premium Pass Unlocked Successfully!", "success");
+                      
+                      setTimeout(() => { window.location.href = "index.html"; }, 2000);
+                  } else {
+                      document.getElementById('stepVerify').style.display = "none";
+                      document.getElementById('stepGenerate').style.display = "block";
+                      showStatus("Verification failed. Please click 'Get Unlock Link' first.", "error");
+                  }
               }
+          } catch(err) {
+              document.getElementById('stepVerify').style.display = "none";
+              document.getElementById('stepGenerate').style.display = "block";
+              showStatus("Database error. Please try again.", "error");
           }
-      } catch(err) {
-          document.getElementById('stepVerify').style.display = "none";
-          document.getElementById('stepGenerate').style.display = "block";
-          showStatus("Database validation error. Please check your internet and try again.", "error");
       }
   }
 </script>
