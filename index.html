@@ -33,8 +33,6 @@
   
   .nav-btn { color: white; text-decoration: none; font-weight: 600; font-size: 14px; padding: 6px 12px; border-radius: 6px; transition: 0.2s; }
   .nav-btn:hover { color: var(--primary); }
-  .btn-premium { background: var(--primary); color: #000; font-weight: bold; }
-  .btn-premium:hover { color: #000; box-shadow: 0 0 10px rgba(0,212,255,0.4); }
 
   /* MAIN CONTAINER */
   .container { max-width: 1200px; width: 100%; margin: 0 auto; padding: 20px; flex-grow: 1; }
@@ -96,7 +94,6 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
      </a>
      
-     <a href="unlock.html" class="nav-btn btn-premium" id="premiumNavStatus">⚡ Get Pass</a>
      <a href="profile.html" class="nav-btn" id="profileBtn">Profile</a>
   </div>
 </header>
@@ -115,8 +112,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, getDocs, doc, getDoc, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
       apiKey: "AIzaSyAct9qGdPor_WyQ5k9Gad6HYRi_5Z_Tb_A",
@@ -126,25 +122,11 @@
   };
   
   const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
   const db = getFirestore(app);
-
-  // Check Premium Status
-  onAuthStateChanged(auth, async (user) => {
-      if(user) {
-          try {
-              const uSnap = await getDoc(doc(db, "users", user.uid));
-              if(uSnap.exists() && uSnap.data().accessExpiresAt > Date.now()) {
-                  document.getElementById('premiumNavStatus').innerHTML = "🌟 Premium Active";
-                  document.getElementById('premiumNavStatus').style.background = "#10b981"; 
-              }
-          } catch(e) { console.error(e); }
-      }
-  });
 
   // PAGINATION SYSTEM (FAST LOADING)
   let lastVisibleDoc = null;
-  const COMICS_PER_PAGE = 10; // Ek baar mein 10 comic load hongi
+  const COMICS_PER_PAGE = 10; 
   
   const container = document.getElementById('comicsContainer');
   const loadMoreBtn = document.getElementById('loadMoreBtn');
@@ -158,10 +140,10 @@
           let comicsQuery;
           
           if(isLoadMore && lastVisibleDoc) {
-              // Agli 10 comics layega (jahan se chhoda tha)
+              // Agli 10 comics
               comicsQuery = query(collection(db, "comics"), orderBy("updatedAt", "desc"), startAfter(lastVisibleDoc), limit(COMICS_PER_PAGE));
           } else {
-              // Pehli 10 comics layega
+              // Pehli 10 comics
               comicsQuery = query(collection(db, "comics"), orderBy("updatedAt", "desc"), limit(COMICS_PER_PAGE));
           }
           
@@ -200,11 +182,10 @@
               `;
           });
 
-          // Agar data limit ke barabar aaya hai, matlab aage aur bhi comics ho sakti hain
           if(snapshot.docs.length === COMICS_PER_PAGE) {
               loadMoreBtn.style.display = "inline-block";
           } else {
-              loadMoreBtn.style.display = "none"; // Saari comics khatam
+              loadMoreBtn.style.display = "none"; 
           }
           
       } catch (err) {
