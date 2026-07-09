@@ -26,7 +26,7 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
 
 .action-btn { width: 100%; padding: 16px; border: none; border-radius: 8px; background: var(--primary); color: #000; font-weight: 900; font-size: 16px; cursor: pointer; transition: 0.3s; text-transform: uppercase; display: flex; justify-content: center; align-items: center; gap: 10px;}
 .action-btn:hover { background: #00b8e6; transform: translateY(-2px); box-shadow: 0 0 20px rgba(0,212,255,0.5); }
-.action-btn:disabled { background: #333; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
+.action-btn:disabled { background: #333; color: #888; cursor: not-allowed; }
 
 .status-msg { margin-top: 20px; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 14px; display: none; word-wrap: break-word; }
 .status-success { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); }
@@ -93,7 +93,7 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       statusBox.innerText = msg;
   }
 
-  // 1. Authentication Check
+  // 1. Auth Check
   onAuthStateChanged(auth, (user) => {
       if (!user) {
           window.location.href = "profile.html";
@@ -101,46 +101,41 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       }
       currentUser = user;
       
-      // Agar user GPLinks se redirect hokar aaya hai
       const urlParams = new URLSearchParams(window.location.search);
       if(urlParams.has('verify')) {
           checkVerificationReturn(urlParams.get('verify'));
       }
   });
 
-  // 2. Start Secure Unlock Process
+  // 2. Start Hack-Proof Unlock Process
   window.startUnlockProcess = async () => {
-      if(!currentUser) {
-          showStatus("Please login first to get the pass.", "error");
-          return;
-      }
+      if(!currentUser) return;
       
       generateBtn.disabled = true;
       genLoader.style.display = "block";
       showStatus("Connecting to secure server...", "loading");
 
       try {
-          // 1. Ek dum naya aur unique token banao
+          // A. Generate Unique Token
           const randomToken = "tok_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
           
-          // 2. Database mein save karo taaki wapas aane par match ho sake
+          // B. Save to Database
           const userRef = doc(db, "users", currentUser.uid);
           await updateDoc(userRef, { pendingToken: randomToken });
 
-          // 3. User ko seedha Cloudflare Redirector par bhejo! (Bypasses Ad-Blockers)
-          // Yeh URL background fetch nahi karega, seedha page redirect hoga
+          // C. Redirect to Cloudflare Worker (Bypasses all Ad-Blockers)
+          // Make sure this matches your exact worker URL!
           const workerUrl = `https://comic-pur.maxton480.workers.dev/generate?token=${randomToken}`;
           window.location.href = workerUrl;
           
       } catch (err) {
-          console.error(err);
-          showStatus("Network Error: Could not save security token.", "error");
+          showStatus("Error generating secure link. Try again.", "error");
           generateBtn.disabled = false;
           genLoader.style.display = "none";
       }
   };
 
-  // 3. Verify GPLinks Return (100% Hacker-Proof)
+  // 3. Verify Return (Anti-Bypass)
   async function checkVerificationReturn(returnedToken) {
       document.getElementById('stepGenerate').style.display = "none";
       document.getElementById('stepVerify').style.display = "block";
@@ -152,11 +147,11 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
           if(userSnap.exists()) {
               const userData = userSnap.data();
               
-              // TIGHT SECURITY: Jo token banaya tha, wahi token wapas aana chahiye!
+              // STRICT MATCH
               if(userData.pendingToken && userData.pendingToken === returnedToken) {
-                  const newExpiryTime = Date.now() + 86400000; // 24 Hours validity
+                  const newExpiryTime = Date.now() + 86400000; 
                   
-                  // SUCCESS: Pass activate karo aur Token hamesha ke liye mita do
+                  // ACTIVATE PASS & DELETE TOKEN FOREVER
                   await updateDoc(userRef, {
                       accessExpiresAt: newExpiryTime,
                       pendingToken: deleteField() 
@@ -168,19 +163,18 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
                   
                   setTimeout(() => { window.location.href = "index.html"; }, 2000);
               } else {
-                  // FAILED: Hacker attempt or old link used
+                  // Bypass Attempt Caught
                   document.getElementById('stepVerify').style.display = "none";
                   document.getElementById('stepGenerate').style.display = "block";
-                  showStatus("Security Error: Invalid or expired token. You cannot bypass the system!", "error");
+                  showStatus("Security Error: Invalid or expired token. Bypass blocked 🚫", "error");
                   
-                  // Token delete karo taaki stuck na ho
                   await updateDoc(userRef, { pendingToken: deleteField() });
               }
           }
       } catch(err) {
           document.getElementById('stepVerify').style.display = "none";
           document.getElementById('stepGenerate').style.display = "block";
-          showStatus("Database verification error. Please try again.", "error");
+          showStatus("Database verification error.", "error");
       }
   }
 </script>
