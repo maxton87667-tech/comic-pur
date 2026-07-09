@@ -88,7 +88,7 @@
 <div class="dashboard">
   
   <div class="panel" style="grid-column: 1 / -1;">
-    <h3>Security & GitHub Credentials</h3>
+    <h3>Security & API Credentials</h3>
     <div style="display: flex; flex-wrap: wrap; gap: 20px;">
         <div class="form-group" style="flex: 1; min-width: 300px;">
           <label>GitHub Personal Access Token (for auto-sync)</label>
@@ -96,8 +96,12 @@
           <button class="btn btn-primary" id="saveGhTokenBtn" style="margin-top: 12px;">Save GitHub Token</button>
           <button class="btn btn-warning" id="testGhConnectionBtn">📡 Test GitHub Connection</button>
         </div>
-        <div style="flex: 1; min-width: 300px; color: #aaa; font-size: 13px; display: flex; align-items: center;">
-            <p><strong>Note:</strong> GPLinks API Key has been securely moved to the backend Cloudflare Worker for enhanced security. It is no longer required here.</p>
+
+        <div class="form-group" style="flex: 1; min-width: 300px;">
+          <label>GPLinks API Key</label>
+          <input type="password" id="gpLinksTokenField" class="form-control" placeholder="Paste your GPLinks API Key here...">
+          <button class="btn btn-success" id="saveGpTokenBtn" style="margin-top: 12px;">Save API Key to Database</button>
+          <div id="apiKeyStatus" class="status-box"></div>
         </div>
     </div>
   </div>
@@ -119,7 +123,6 @@
       <input type="text" id="comicGenre" class="form-control" placeholder="Example: Romance, Action">
     </div>
     
-    <!-- 🔥 18+ ADULT CONTENT CHECKBOX 🔥 -->
     <div class="checkbox-group">
       <input type="checkbox" id="comicIsAdult">
       <label for="comicIsAdult">Mark as 18+ (Shows Warning Popup & Adult Tag)</label>
@@ -216,9 +219,8 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // 🔥 UPDATED GITHUB REPO 🔥
   const GITHUB_USER = "maxton87667-tech"; 
-  const GITHUB_REPO = "comic-pur";           
+  const GITHUB_REPO = "Comics";           
   const GITHUB_BRANCH = "main";           
 
   const CLOUD_NAME = "dht22h84x";
@@ -251,12 +253,36 @@
               statusBox.style.borderLeftColor = "var(--success)";
               statusBox.innerText = `Success! Connected to Repo: ${data.name}.`;
           } else {
-              if(res.status === 404) throw new Error(`Repo not found. Check repository name.`);
+              if(res.status === 404) throw new Error(`Repo not found.`);
               if(res.status === 401) throw new Error(`Unauthorized Token.`);
               throw new Error(`API Error: ${res.statusText}`);
           }
       } catch (e) {
           statusBox.style.borderLeftColor = "var(--danger)"; statusBox.innerText = "Connection Failed: " + e.message;
+      }
+  });
+
+  async function loadSettings() {
+      try {
+          const snap = await getDoc(doc(db, "settings", "api_keys"));
+          if(snap.exists() && snap.data().gplinks) {
+              document.getElementById('gpLinksTokenField').value = snap.data().gplinks;
+          }
+      } catch(e) { console.error("Settings load error:", e); }
+  }
+
+  document.getElementById('saveGpTokenBtn').addEventListener('click', async () => {
+      const val = document.getElementById('gpLinksTokenField').value.trim();
+      const statusBox = document.getElementById('apiKeyStatus');
+      if(val) {
+          statusBox.style.display = "block"; statusBox.innerText = "Saving API Key...";
+          try {
+              await setDoc(doc(db, "settings", "api_keys"), { gplinks: val }, { merge: true });
+              statusBox.innerText = "GPLinks API Key saved to database successfully!";
+              statusBox.style.borderLeftColor = "var(--success)";
+          } catch(e) {
+              statusBox.innerText = "Database Error: " + e.message; statusBox.style.borderLeftColor = "var(--danger)";
+          }
       }
   });
 
@@ -267,7 +293,7 @@
           if (user.email !== "maxton480@gmail.com") {
               alert("Access Denied!"); window.location.replace("profile.html");
           } else {
-              loadComicsRefresh(); 
+              loadSettings(); loadComicsRefresh(); 
           }
       }
   });
@@ -346,7 +372,7 @@
 
       const folderName = comic.githubFolder || comic.title.toLowerCase().trim().replace(/\s+/g, '-');
       statusBox.style.display = "block"; statusBox.style.borderLeftColor = "var(--primary)";
-      statusBox.innerHTML = `Connecting to GitHub [Repo: <b>${GITHUB_REPO}</b>]...`; window.scrollTo({top: 0, behavior: 'smooth'});
+      statusBox.innerHTML = `Connecting to GitHub [Branch: <b>${GITHUB_BRANCH}</b>]...`; window.scrollTo({top: 0, behavior: 'smooth'});
 
       try {
           const repoUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/comics/${encodeURIComponent(folderName)}?ref=${GITHUB_BRANCH}`;
@@ -403,6 +429,8 @@
       const genre = document.getElementById('comicGenre').value.trim();
       const summary = document.getElementById('comicSummary').value.trim();
       const coverUrl = document.getElementById('comicCover').value.trim();
+      
+      // 🔥 GET 18+ CHECKBOX VALUE 🔥
       const isAdult = document.getElementById('comicIsAdult').checked;
 
       const statusBox = document.getElementById('saveStatus');
@@ -528,6 +556,8 @@
       document.getElementById('comicGenre').value = c.genre || "";
       document.getElementById('comicSummary').value = c.summary || ""; 
       document.getElementById('comicCover').value = c.coverUrl || "";
+      
+      // 🔥 SET CHECKBOX STATE WHEN EDITING 🔥
       document.getElementById('comicIsAdult').checked = c.isAdult === true;
       
       document.getElementById('formCoverPreview').src = c.coverUrl ? c.coverUrl : "https://via.placeholder.com/70x105?text=No+Cover";
@@ -545,6 +575,8 @@
       document.getElementById('editComicId').value = ""; document.getElementById('comicTitle').value = "";
       document.getElementById('githubFolder').value = ""; document.getElementById('comicGenre').value = "";
       document.getElementById('comicSummary').value = ""; document.getElementById('comicCover').value = "";
+      
+      // 🔥 RESET CHECKBOX 🔥
       document.getElementById('comicIsAdult').checked = false;
       
       document.getElementById('formCoverPreview').src = "https://via.placeholder.com/70x105?text=No+Cover";
