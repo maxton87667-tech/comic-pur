@@ -3,81 +3,122 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Reading Comic | Comic Pur</title>
+<title>Reading Chapter | Comic Pur</title>
 <style>
-:root { --primary: #00d4ff; --dark: #070b19; --header-bg: rgba(7, 11, 25, 0.95); }
-* { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
-body { background-color: var(--dark); color: white; min-height: 100vh; overflow-x: hidden; }
+  :root { 
+    --primary: #00d4ff; 
+    --primary-glow: rgba(0, 212, 255, 0.4);
+    --dark: #000000; /* Pure cinematic black */
+    --ui-bg: rgba(7, 11, 25, 0.85); /* Modern glassmorphism */
+  }
+  
+  * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+  body { background-color: var(--dark); color: white; min-height: 100vh; overflow-x: hidden; }
 
-/* HEADER */
-header { 
-    position: fixed; top: 0; width: 100%; z-index: 100;
-    padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; 
-    background: var(--header-bg); border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
-    backdrop-filter: blur(10px); transition: transform 0.3s ease;
-}
-.header-hidden { transform: translateY(-100%); }
-.brand-text { font-size: 18px; font-weight: 900; color: white; text-decoration: none; letter-spacing: 1px;}
-.brand-text span { color: var(--primary); }
-.chapter-title { font-size: 14px; font-weight: 600; color: #aaa; text-align: center; flex-grow: 1; margin: 0 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-.back-btn { background: transparent; color: white; font-size: 20px; cursor: pointer; text-decoration: none; }
+  /* OVERLAY UI TRANSITIONS */
+  .ui-overlay {
+    position: fixed; left: 0; right: 0; z-index: 100;
+    background: var(--ui-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .ui-hidden { opacity: 0; pointer-events: none; }
+  .ui-hidden.header-bar { transform: translateY(-100%); }
+  .ui-hidden.bottom-bar { transform: translateY(100%); }
 
-/* READER CONTAINER */
-.reader-wrapper { margin-top: 60px; display: flex; flex-direction: column; align-items: center; width: 100%; background: #000; min-height: 100vh;}
-.reader-container { width: 100%; max-width: 800px; display: flex; flex-direction: column; }
-/* Webtoon style: block display and no margin to remove any gaps between sliced images */
-.comic-page { width: 100%; display: block; margin: 0; padding: 0; object-fit: contain; min-height: 200px; background: #111; }
+  /* TOP READING PROGRESS BAR */
+  .progress-container {
+    position: absolute; bottom: -2px; left: 0; width: 100%; height: 2px; background: rgba(255,255,255,0.1);
+  }
+  .progress-bar {
+    height: 100%; width: 0%; background: var(--primary);
+    box-shadow: 0 0 10px var(--primary-glow); transition: width 0.1s;
+  }
 
-/* PAGE COUNTER BADGE */
-.page-counter {
-    position: fixed; bottom: 20px; right: 20px; z-index: 100;
-    background: rgba(0, 0, 0, 0.7); border: 1px solid var(--primary);
-    color: white; padding: 8px 15px; border-radius: 20px;
-    font-weight: 700; font-size: 14px; backdrop-filter: blur(5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-    transition: opacity 0.3s;
-}
+  /* HEADER */
+  .header-bar {
+    top: 0; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
+    border-bottom-color: rgba(0, 212, 255, 0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .back-btn { 
+    color: var(--primary); text-decoration: none; font-weight: 800; font-size: 16px; 
+    display: flex; align-items: center; gap: 5px;
+  }
+  .chapter-title { 
+    font-weight: 700; font-size: 15px; color: #e5e7eb; text-align: center; 
+    flex-grow: 1; padding: 0 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+  }
 
-/* LOADER */
-.loader-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh; width: 100%; }
-.loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  /* BOTTOM CONTROL BAR */
+  .bottom-bar {
+    bottom: 0; padding: 20px; display: flex; justify-content: space-between; align-items: center;
+    border-top-color: rgba(0, 212, 255, 0.15); box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+  }
+  .nav-btn { 
+    background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); 
+    padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; 
+    cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .nav-btn:hover:not(:disabled) { 
+    background: var(--primary); border-color: var(--primary); color: #000; 
+    box-shadow: 0 0 15px var(--primary-glow); transform: translateY(-2px);
+  }
+  .nav-btn:disabled { color: #555; border-color: #222; background: transparent; cursor: not-allowed; }
+  
+  .page-counter { 
+    background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 20px;
+    font-size: 14px; font-weight: 900; color: var(--primary); letter-spacing: 2px; 
+    border: 1px solid rgba(0, 212, 255, 0.3);
+  }
 
-/* NAVIGATION FOOTER */
-.chapter-nav { width: 100%; max-width: 800px; margin: 0 auto; padding: 30px 20px; display: flex; justify-content: space-between; gap: 15px; background: var(--dark);}
-.nav-btn { flex: 1; padding: 12px; text-align: center; background: #111827; color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; text-decoration: none; font-weight: bold; transition: 0.2s; }
-.nav-btn:hover { background: var(--primary); color: #000; }
-.nav-btn.disabled { opacity: 0.5; pointer-events: none; }
+  /* COMIC READER CONTAINER */
+  .reader-container {
+    max-width: 750px; width: 100%; margin: 0 auto; 
+    display: flex; flex-direction: column; 
+    min-height: 100vh; cursor: pointer;
+  }
+  
+  /* Seamless Webtoon Images */
+  .comic-page {
+    width: 100%; height: auto; display: block; margin: 0; padding: 0;
+    vertical-align: top; /* Prevents tiny micro-gaps between images */
+    min-height: 200px; background: #0a0a0a;
+  }
 
+  /* LOADER */
+  .loader-box { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: #000; z-index: 500; flex-direction: column; gap: 20px;}
+  .spinner { border: 3px solid rgba(255,255,255,0.05); border-top: 3px solid var(--primary); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
 </style>
 </head>
 <body>
 
-<header id="topHeader">
-  <a href="index.html" class="back-btn">←</a>
-  <div class="chapter-title" id="headerTitle">Loading Chapter...</div>
-  <a href="index.html" class="brand-text">C<span>P</span></a>
-</header>
-
-<div class="reader-wrapper">
-    <div id="loader" class="loader-container">
-        <div class="loader"></div>
-        <p style="color: #aaa; font-size: 14px;">Loading high-quality pages...</p>
-    </div>
-    <div class="reader-container" id="readerContainer">
-        <!-- Images will be injected here -->
-    </div>
-    
-    <div class="chapter-nav" id="chapterNav" style="display: none;">
-        <a href="#" class="nav-btn" id="prevBtn">← Previous</a>
-        <a href="#" class="nav-btn" id="nextBtn">Next →</a>
-    </div>
+<div id="loaderBox" class="loader-box">
+    <div class="spinner"></div>
+    <div style="color:var(--primary); font-weight:800; font-size: 15px; letter-spacing: 1px;" id="loaderText">PREPARING CHAPTER...</div>
 </div>
 
-<div class="page-counter" id="pageCounter" style="display: none;">1 / 1</div>
+<header id="headerBar" class="ui-overlay header-bar">
+    <a href="#" id="backBtn" class="back-btn">← Back</a>
+    <div id="topTitle" class="chapter-title">Loading...</div>
+    <div style="width: 60px;"></div> <div class="progress-container">
+        <div class="progress-bar" id="readProgressBar"></div>
+    </div>
+</header>
+
+<div id="readerContainer" class="reader-container" onclick="toggleUI()">
+    </div>
+
+<div id="bottomBar" class="ui-overlay bottom-bar">
+    <button id="prevBtn" class="nav-btn" onclick="changeChapter(-1)">← Prev</button>
+    <div id="pageCounter" class="page-counter">1 / -</div>
+    <button id="nextBtn" class="nav-btn" onclick="changeChapter(1)">Next →</button>
+</div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -88,117 +129,152 @@ header {
   };
   
   const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
   const db = getFirestore(app);
 
-  const readerContainer = document.getElementById('readerContainer');
-  const loader = document.getElementById('loader');
-  const pageCounter = document.getElementById('pageCounter');
-  const headerTitle = document.getElementById('headerTitle');
-  const chapterNav = document.getElementById('chapterNav');
-  
+  let comicId = "";
+  let currentChapterIndex = 0;
+  let comicData = null;
   let totalPages = 0;
+  let uiVisible = true;
 
-  // URL se Comic ID aur Chapter ID nikalna
-  // Example URL: reader.html?comic=ishq_par_jor_nahi&chapter=ch1
-  const urlParams = new URLSearchParams(window.location.search);
-  const comicId = urlParams.get('comic');
-  const chapterId = urlParams.get('chapter');
+  // 1. Check Authentication & Premium Pass (Security intact)
+  onAuthStateChanged(auth, async (user) => {
+      const urlParams = new URLSearchParams(window.location.search);
+      comicId = urlParams.get('comic');
+      currentChapterIndex = parseInt(urlParams.get('ch'));
 
-  async function loadChapter() {
-      if (!comicId || !chapterId) {
-          headerTitle.innerText = "Error: Invalid Link";
-          loader.innerHTML = "<p>Comic or Chapter not specified in URL.</p>";
-          return;
+      if(!comicId || isNaN(currentChapterIndex)) {
+          alert("Invalid URL!"); window.location.href = "index.html"; return;
       }
+      
+      document.getElementById('backBtn').href = `comic.html?id=${comicId}`;
 
+      if (user) {
+          try {
+              const uSnap = await getDoc(doc(db, "users", user.uid));
+              if (!uSnap.exists() || uSnap.data().accessExpiresAt < Date.now()) {
+                  window.location.href = `comic.html?id=${comicId}`;
+                  return;
+              }
+              loadChapterData();
+          } catch(e) { console.error(e); }
+      } else {
+          window.location.href = `comic.html?id=${comicId}`;
+      }
+  });
+
+  // 2. Fetch Comic and Render Images
+  async function loadChapterData() {
       try {
-          // Firebase se data fetch karna
-          // Note: Apne database structure ke hisaab se path adjust kar lena
-          const chapterRef = doc(db, "comics", comicId, "chapters", chapterId);
-          const chapterSnap = await getDoc(chapterRef);
-
-          if (chapterSnap.exists()) {
-              const data = chapterSnap.data();
-              const images = data.images || []; // Array of image URLs
-              totalPages = images.length;
-
-              headerTitle.innerText = data.title || `Chapter ${chapterId}`;
+          const docSnap = await getDoc(doc(db, "comics", comicId));
+          if(docSnap.exists()) {
+              comicData = docSnap.data();
+              const episodes = comicData.episodes || [];
               
-              if (totalPages === 0) {
-                  loader.innerHTML = "<p>No pages found in this chapter.</p>";
+              if(currentChapterIndex < 0 || currentChapterIndex >= episodes.length) {
+                  document.getElementById('loaderText').innerText = "CHAPTER DOES NOT EXIST!";
                   return;
               }
 
-              loader.style.display = "none";
-              pageCounter.style.display = "block";
-              pageCounter.innerText = `1 / ${totalPages}`;
-              chapterNav.style.display = "flex";
+              const currentChapter = episodes[currentChapterIndex];
+              const imageUrls = currentChapter.urls || [];
+              totalPages = imageUrls.length;
 
-              renderImages(images);
-              setupIntersectionObserver();
+              // Update UI Texts
+              document.getElementById('topTitle').innerText = `Ch ${currentChapterIndex + 1}: ${currentChapter.title}`;
+              document.getElementById('pageCounter').innerText = `1 / ${totalPages}`;
+              
+              // Handle Prev/Next Buttons
+              document.getElementById('prevBtn').disabled = currentChapterIndex === 0;
+              document.getElementById('nextBtn').disabled = currentChapterIndex === (episodes.length - 1);
 
+              renderImages(imageUrls);
+              
           } else {
-              headerTitle.innerText = "Chapter Not Found";
-              loader.innerHTML = "<p>The requested chapter does not exist.</p>";
+              document.getElementById('loaderText').innerText = "COMIC NOT FOUND!";
           }
-      } catch (error) {
-          console.error("Error loading chapter:", error);
-          loader.innerHTML = "<p>Error loading chapter. Check console.</p>";
+      } catch (err) {
+          document.getElementById('loaderText').innerText = "DATABASE ERROR!";
       }
   }
 
-  function renderImages(images) {
-      images.forEach((imgUrl, index) => {
-          const imgElement = document.createElement('img');
-          imgElement.src = imgUrl;
-          imgElement.className = 'comic-page';
-          imgElement.dataset.index = index + 1; // Counter ke liye save kar rahe hain
-          imgElement.loading = "lazy"; // Fast loading ke liye
-          
-          // Image load hone par background color hata do
-          imgElement.onload = () => { imgElement.style.background = 'transparent'; };
-          
-          readerContainer.appendChild(imgElement);
+  function renderImages(urls) {
+      const container = document.getElementById('readerContainer');
+      container.innerHTML = "";
+
+      if(urls.length === 0) {
+          container.innerHTML = `<div style="color:#555; padding: 50px; text-align:center; font-weight:bold;">NO PAGES UPLOADED FOR THIS CHAPTER.</div>`;
+          document.getElementById('loaderBox').style.display = "none";
+          return;
+      }
+
+      urls.forEach((url, i) => {
+          container.innerHTML += `<img src="${url}" class="comic-page" data-page="${i + 1}" alt="Page ${i+1}" loading="lazy">`;
       });
+
+      document.getElementById('loaderBox').style.display = "none";
+      setupScrollObserver();
+      
+      // Initially hide UI after a short delay for immersion
+      setTimeout(() => { if(uiVisible) toggleUI(); }, 2500);
   }
 
-  // 🔥 Yahan hai Counter ka Smart Magic 🔥
-  function setupIntersectionObserver() {
-      const observerOptions = {
-          root: null,
-          rootMargin: "0px",
-          threshold: 0.3 // Jab 30% image screen par aaye toh counter update ho
-      };
+  // 3. UI Toggle Logic (Full Screen Reading)
+  window.toggleUI = () => {
+      uiVisible = !uiVisible;
+      const header = document.getElementById('headerBar');
+      const bottom = document.getElementById('bottomBar');
+      
+      if(uiVisible) {
+          header.classList.remove('ui-hidden');
+          bottom.classList.remove('ui-hidden');
+      } else {
+          header.classList.add('ui-hidden');
+          bottom.classList.add('ui-hidden');
+      }
+  };
 
+  // 4. Live Page Tracker (Fixing the Page Count Issue)
+  function setupScrollObserver() {
+      const pages = document.querySelectorAll('.comic-page');
+      
+      // FIXED LOGIC: Creates an invisible trigger line 40% from the top of the screen.
+      // Jab image is line ko touch karegi, page update ho jayega. Height se koi fark nahi padega!
+      const observerOptions = { 
+          root: null, 
+          rootMargin: '-40% 0px -50% 0px', 
+          threshold: 0 
+      };
+      
       const observer = new IntersectionObserver((entries) => {
           entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                  const currentPage = entry.target.dataset.index;
-                  pageCounter.innerText = `${currentPage} / ${totalPages}`;
+              if(entry.isIntersecting) {
+                  const currentPageNumber = entry.target.getAttribute('data-page');
+                  document.getElementById('pageCounter').innerText = `${currentPageNumber} / ${totalPages}`;
               }
           });
       }, observerOptions);
 
-      const pages = document.querySelectorAll('.comic-page');
       pages.forEach(page => observer.observe(page));
   }
 
-  // Header ko scroll karne par chupana (Immersive feel ke liye)
-  let lastScrollY = window.scrollY;
-  const header = document.getElementById('topHeader');
-  
+  // 5. Reading Progress Bar Logic (Bonus Cool Feature)
   window.addEventListener('scroll', () => {
-      if (window.scrollY > 100 && window.scrollY > lastScrollY) {
-          header.classList.add('header-hidden'); // Niche scroll = Hide header
-      } else {
-          header.classList.remove('header-hidden'); // Upar scroll = Show header
-      }
-      lastScrollY = window.scrollY;
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('readProgressBar').style.width = scrolled + "%";
   });
 
-  // Start process
-  loadChapter();
-
+  // 6. Change Chapter Logic
+  window.changeChapter = (step) => {
+      const newIndex = currentChapterIndex + step;
+      // Show loader before switching
+      document.getElementById('loaderBox').style.display = "flex";
+      document.getElementById('loaderText').innerText = "LOADING NEXT CHAPTER...";
+      window.location.href = `reader.html?comic=${comicId}&ch=${newIndex}`;
+  };
 </script>
 </body>
 </html>
