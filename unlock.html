@@ -107,7 +107,7 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       }
   });
 
-  // 2. Start Hack-Proof Unlock Process
+  // 2. Start Hack-Proof Unlock Process via Vercel
   window.startUnlockProcess = async () => {
       if(!currentUser) return;
       
@@ -121,8 +121,10 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
           
           await updateDoc(userRef, { pendingToken: randomToken });
 
-          // 🔥 TUMHARA DUSRA WORKER (API ENGINE) KA REAL LINK 🔥
-          const targetRedirect = `https://comic-api.maxton87667.workers.dev/generate?token=${randomToken}`;
+          // 🔥 YAHAN APNA VERCEL WALA LINK DAALNA HAI 🔥
+          // Niche wale URL ko apne asli vercel link se replace karna (example: comic-pur.vercel.app)
+          const targetRedirect = `https://YOUR_VERCEL_PROJECT_URL_HERE.vercel.app/api/generate?token=${randomToken}`;
+          
           window.location.href = targetRedirect;
           
       } catch (err) {
