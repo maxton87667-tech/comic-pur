@@ -116,17 +116,16 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
       showStatus("Connecting to secure server...", "loading");
 
       try {
-          // A. Generate Unique Token
           const randomToken = "tok_" + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-          
-          // B. Save to Database
           const userRef = doc(db, "users", currentUser.uid);
+          
           await updateDoc(userRef, { pendingToken: randomToken });
 
-          // C. Redirect to Cloudflare Worker (Bypasses all Ad-Blockers)
-          // Make sure this matches your exact worker URL!
-          const workerUrl = `https://comic-pur.maxton480.workers.dev/generate?token=${randomToken}`;
-          window.location.href = workerUrl;
+          // 🔥 YAHAN APNE WORKER KA URL DAALNA HAI 🔥
+          const CLOUDFLARE_WORKER_URL = "https://YOUR_WORKER_URL.workers.dev";
+          
+          const targetRedirect = `${CLOUDFLARE_WORKER_URL}/generate?token=${randomToken}`;
+          window.location.href = targetRedirect;
           
       } catch (err) {
           showStatus("Error generating secure link. Try again.", "error");
@@ -147,11 +146,9 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
           if(userSnap.exists()) {
               const userData = userSnap.data();
               
-              // STRICT MATCH
               if(userData.pendingToken && userData.pendingToken === returnedToken) {
                   const newExpiryTime = Date.now() + 86400000; 
                   
-                  // ACTIVATE PASS & DELETE TOKEN FOREVER
                   await updateDoc(userRef, {
                       accessExpiresAt: newExpiryTime,
                       pendingToken: deleteField() 
@@ -163,7 +160,6 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
                   
                   setTimeout(() => { window.location.href = "index.html"; }, 2000);
               } else {
-                  // Bypass Attempt Caught
                   document.getElementById('stepVerify').style.display = "none";
                   document.getElementById('stepGenerate').style.display = "block";
                   showStatus("Security Error: Invalid or expired token. Bypass blocked 🚫", "error");
