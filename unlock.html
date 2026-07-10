@@ -121,10 +121,8 @@ header { padding: 15px 20px; display: flex; align-items: center; justify-content
           
           await updateDoc(userRef, { pendingToken: randomToken });
 
-          // 🔥 YAHAN APNE WORKER KA URL DAALNA HAI 🔥
-          const CLOUDFLARE_WORKER_URL = "https://YOUR_WORKER_URL.workers.dev";
-          
-          const targetRedirect = `${CLOUDFLARE_WORKER_URL}/generate?token=${randomToken}`;
+          // 🔥 TUMHARA DUSRA WORKER (API ENGINE) KA REAL LINK 🔥
+          const targetRedirect = `https://comic-api.maxton87667.workers.dev/generate?token=${randomToken}`;
           window.location.href = targetRedirect;
           
       } catch (err) {
