@@ -11,8 +11,11 @@
 
   /* HEADER */
   header { padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; background: rgba(7, 11, 25, 0.95); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-  .logo-link { display: flex; align-items: center; text-decoration: none; }
-  .site-logo { height: 32px; width: auto; object-fit: contain; filter: drop-shadow(0 0 5px rgba(0, 212, 255, 0.3)); }
+  
+  /* ORIGINAL TEXT TITLE STYLE */
+  .brand { font-size: 22px; font-weight: 900; color: white; text-decoration: none; letter-spacing: 1px; }
+  .brand span { color: var(--primary); }
+  
   .back-btn { background: transparent; color: var(--primary); border: 1px solid var(--primary); padding: 6px 15px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; }
 
   /* CONTAINER */
@@ -54,9 +57,8 @@
 <body>
 
 <header>
-  <a href="index.html" class="logo-link">
-      <img src="https://raw.githubusercontent.com/maxton87667-tech/Comics/refs/heads/main/assets/logo-circle.png" class="site-logo" alt="Comic Pur">
-  </a>
+  <!-- TEXT TITLE WAPAS AA GAYA -->
+  <a href="index.html" class="brand">COMIC <span>PUR</span></a>
   <a href="index.html" class="back-btn">Home</a>
 </header>
 
@@ -64,6 +66,7 @@
   <div class="auth-card">
       <div id="msgBox" class="msg-box"></div>
 
+      <!-- 1. LOGIN FORM -->
       <div id="loginFormSection">
           <h2 class="card-title">Welcome <span>Back</span></h2>
           <form id="loginForm" onsubmit="handleLogin(event)">
@@ -82,6 +85,7 @@
           <p class="switch-text">New to Comic Pur? <span class="switch-link" onclick="toggleAuthMode(false)">Create Account</span></p>
       </div>
 
+      <!-- 2. SIGN UP FORM -->
       <div id="signupFormSection" style="display: none;">
           <h2 class="card-title">Create <span>Account</span></h2>
           <form id="signupForm" onsubmit="handleSignup(event)">
@@ -104,6 +108,7 @@
           <p class="switch-text">Already have an account? <span class="switch-link" onclick="toggleAuthMode(true)">Sign In</span></p>
       </div>
 
+      <!-- 3. LOGGED IN DASHBOARD -->
       <div id="profileSection" style="display: none;">
           <h2 class="card-title">Hello, <span id="displayUsername">Reader</span></h2>
           <div class="profile-box">
@@ -147,7 +152,6 @@
   }
   function hideMessage() { msgBox.style.display = "none"; }
 
-  // 1. SWITCH BETWEEN LOGIN & SIGNUP UI CLEANLY
   window.toggleAuthMode = (showLogin) => {
       hideMessage();
       isLoginMode = showLogin;
@@ -155,10 +159,8 @@
       document.getElementById('signupFormSection').style.display = showLogin ? "none" : "block";
   };
 
-  // 2. AUTH STATE MONITOR (Auto-Redirects & UI Updates)
   onAuthStateChanged(auth, async (user) => {
       if (user) {
-          // User logged in hai -> UI forms chhupao, Dashboard dikhao
           document.getElementById('loginFormSection').style.display = "none";
           document.getElementById('signupFormSection').style.display = "none";
           document.getElementById('profileSection').style.display = "block";
@@ -173,7 +175,6 @@
                   const data = userSnap.data();
                   document.getElementById('displayUsername').innerText = data.username || "Reader";
                   
-                  // Premium Pass Check
                   const expiry = data.accessExpiresAt || 0;
                   const badge = document.getElementById('passBadge');
                   const expiryText = document.getElementById('expiryTimeText');
@@ -191,15 +192,13 @@
               }
           } catch(e) { console.error("Profile data sync error:", e); }
       } else {
-          // User logged out hai -> Forms dikhao
           document.getElementById('profileSection').style.display = "none";
           toggleAuthMode(isLoginMode);
       }
   });
 
-  // 3. FIXED: SIGN UP WITH AUTOMATIC AUTO-LOGIN & REDIRECT (1 Click Only)
   window.handleSignup = async (e) => {
-      e.preventDefault(); // Prevents page reload
+      e.preventDefault();
       hideMessage();
 
       const username = document.getElementById('signupUsername').value.trim();
@@ -213,21 +212,17 @@
       loader.style.display = "inline-block";
 
       try {
-          // Firebase account creation
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const user = userCredential.user;
 
-          // Save Username and default pass data to Firestore
           await setDoc(doc(db, "users", user.uid), {
               username: username,
               email: email,
-              accessExpiresAt: 0, // Initial status: No pass
+              accessExpiresAt: 0,
               createdAt: Date.now()
           });
 
           showMessage("Account created! Redirecting...", "success");
-          
-          // 🔥 FIX: No manual login needed. Redirecting directly since Firebase auto-logs in!
           setTimeout(() => { window.location.href = "index.html"; }, 1500);
 
       } catch (error) {
@@ -235,7 +230,6 @@
           btn.disabled = false;
           loader.style.display = "none";
           
-          // Clean error messages for users
           if (error.code === 'auth/email-already-in-check' || error.code === 'auth/email-already-in-use') {
               showMessage("This email is already registered.", "error");
           } else if (error.code === 'auth/weak-password') {
@@ -246,7 +240,6 @@
       }
   };
 
-  // 4. FIXED: LOGIN HANDLER (1 Click Only)
   window.handleLogin = async (e) => {
       e.preventDefault();
       hideMessage();
@@ -272,7 +265,6 @@
       }
   };
 
-  // 5. LOGOUT HANDLER
   window.handleLogout = async () => {
       try {
           await signOut(auth);
