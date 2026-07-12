@@ -156,14 +156,12 @@
   const urlParams = new URLSearchParams(window.location.search);
   const comicId = urlParams.get('id');
 
-  // FAST LOAD: Start fetching comic data immediately, don't wait for Auth!
   if(comicId) {
       fetchComicData();
   } else {
       document.getElementById('loader').innerText = "Comic Not Found!";
   }
 
-  // PARALLEL LOAD: Check Auth in the background
   onAuthStateChanged(auth, async (user) => {
       if (user) {
           try {
@@ -175,13 +173,11 @@
       }
       authChecked = true;
       
-      // Agar comic ka data pehle hi load ho chuka hai, toh chapters ko update kar do
       if (comicData) {
           renderChapters();
       }
   });
 
-  // Global Popup Functions
   window.verifyAge = () => {
       sessionStorage.setItem('adult_verified', 'true');
       document.getElementById('ageGateOverlay').style.display = "none";
@@ -198,17 +194,13 @@
           if(docSnap.exists()) {
               comicData = docSnap.data();
               
-              // 18+ Check
               if(comicData.isAdult === true && sessionStorage.getItem('adult_verified') !== 'true') {
                   document.getElementById('loader').style.display = "none";
                   document.getElementById('ageGateOverlay').style.display = "flex";
                   return;
               }
               
-              // Render Header immediately
               renderComicHeader();
-              
-              // Try to render chapters (will show loading if auth is still checking)
               renderChapters();
           } else {
               document.getElementById('loader').innerText = "Comic Not Found!";
@@ -233,14 +225,22 @@
       const badge = document.getElementById('accessBadge');
       
       let eps = comicData.episodes || [];
+
+      // 🔥 FRONTEND AUTO-SORTING LOGIC 🔥
+      // Yeh code purani database entries ko front-end pe automatically seedha kar dega
+      if (eps && eps.length > 0) {
+          eps.sort((a, b) => {
+              let numA = parseInt((a.title.match(/\d+/) || [0])[0]);
+              let numB = parseInt((b.title.match(/\d+/) || [0])[0]);
+              return numA - numB; 
+          });
+      }
       
-      // Agar background mein auth abhi tak check nahi hua hai, toh loader dikhao
       if(!authChecked) {
           chList.innerHTML = `<div style="text-align:center; padding: 20px; color: var(--primary); font-weight: bold;">Loading Chapters...</div>`;
           return;
       }
 
-      // Jab Auth clear ho jaye, tabhi original chapters load karo
       if(hasPremiumAccess) {
           badge.className = "pass-badge badge-active";
           badge.innerText = "🌟 Premium Active";
@@ -258,7 +258,6 @@
 
       eps.forEach((ep, index) => {
           if (hasPremiumAccess) {
-              // Unlocked View
               chList.innerHTML += `
                  <a href="reader.html?comic=${comicId}&ch=${index}" class="chapter-item unlocked">
                     <span class="chapter-title">Ch ${index + 1}: ${ep.title}</span>
@@ -266,7 +265,6 @@
                  </a>
               `;
           } else {
-              // Locked View
               chList.innerHTML += `
                  <div onclick="showUnlockModal()" class="chapter-item locked">
                     <span class="chapter-title" style="color: #aaa;">Ch ${index + 1}: ${ep.title}</span>
