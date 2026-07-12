@@ -172,6 +172,16 @@
               comicData = docSnap.data();
               const episodes = comicData.episodes || [];
               
+              // 🔥 FRONTEND AUTO-SORTING LOGIC 🔥
+              // Prev aur Next buttons ke liye episode list ko number wise sort karna zaroori hai
+              if (episodes && episodes.length > 0) {
+                  episodes.sort((a, b) => {
+                      let numA = parseInt((a.title.match(/\d+/) || [0])[0]);
+                      let numB = parseInt((b.title.match(/\d+/) || [0])[0]);
+                      return numA - numB; 
+                  });
+              }
+              
               if(currentChapterIndex < 0 || currentChapterIndex >= episodes.length) {
                   document.getElementById('loaderText').innerText = "CHAPTER DOES NOT EXIST!";
                   return;
@@ -235,12 +245,10 @@
       }
   };
 
-  // 4. Live Page Tracker (Fixing the Page Count Issue)
+  // 4. Live Page Tracker
   function setupScrollObserver() {
       const pages = document.querySelectorAll('.comic-page');
       
-      // FIXED LOGIC: Creates an invisible trigger line 40% from the top of the screen.
-      // Jab image is line ko touch karegi, page update ho jayega. Height se koi fark nahi padega!
       const observerOptions = { 
           root: null, 
           rootMargin: '-40% 0px -50% 0px', 
@@ -259,7 +267,7 @@
       pages.forEach(page => observer.observe(page));
   }
 
-  // 5. Reading Progress Bar Logic (Bonus Cool Feature)
+  // 5. Reading Progress Bar Logic
   window.addEventListener('scroll', () => {
       const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
       const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
